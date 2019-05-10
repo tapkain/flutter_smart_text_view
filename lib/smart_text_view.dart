@@ -34,7 +34,7 @@ class HashTagElement extends SmartTextElement {
 class MentionElement extends SmartTextElement {
   final String name;
 
-  HashTagElement(this.name);
+  MentionElement(this.name);
 
   @override
   String toString() {
@@ -148,7 +148,7 @@ class SmartText extends StatelessWidget {
 
     void _onMentionClick(String mention) {
       if (onMentionClick != null) {
-        onMentionClick(url);
+        onMentionClick(mention);
       }
     }
 
@@ -215,6 +215,7 @@ class SmartText extends StatelessWidget {
             .merge(linkStyle),
         onOpen: onOpen,
         onTagClick: onTagClick,
+        onMentionClick: onMentionClick,
       ),
     );
   }
