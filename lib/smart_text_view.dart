@@ -30,6 +30,18 @@ class HashTagElement extends SmartTextElement {
   }
 }
 
+/// Represents an element containing a @mention
+class MentionElement extends SmartTextElement {
+  final String name;
+
+  HashTagElement(this.name);
+
+  @override
+  String toString() {
+    return "MentionElement: $name";
+  }
+}
+
 /// Represents an element containing text
 class TextElement extends SmartTextElement {
   final String text;
@@ -46,6 +58,7 @@ final _linkRegex = RegExp(
     r"(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)",
     caseSensitive: false);
 final _tagRegex = RegExp(r"\B#\w*[a-zA-Z]+\w*", caseSensitive: false);
+final _mentionRegex = RegExp(r"\B@\w*[a-zA-Z]+\w*", caseSensitive: false);
 
 /// Turns [text] into a list of [SmartTextElement]
 List<SmartTextElement> _smartify(String text) {
@@ -58,6 +71,8 @@ List<SmartTextElement> _smartify(String text) {
         span.add(LinkElement(word));
       } else if (_tagRegex.hasMatch(word)) {
         span.add(HashTagElement(word));
+      } else if (_mentionRegex.hasMatch(word)) {
+        span.add(MentionElement(word));
       } else {
         span.add(TextElement(word));
       }
@@ -97,6 +112,9 @@ class SmartText extends StatelessWidget {
   /// Callback for tapping a link
   final StringCallback onTagClick;
 
+  /// Callback for tapping a mention
+  final StringCallback onMentionClick;
+
   const SmartText({
     Key key,
     this.text,
@@ -105,16 +123,17 @@ class SmartText extends StatelessWidget {
     this.tagStyle,
     this.onOpen,
     this.onTagClick,
+    this.onMentionClick,
   }) : super(key: key);
 
   /// Raw TextSpan builder for more control on the RichText
-  TextSpan _buildTextSpan(
-      {String text,
-      TextStyle style,
-      TextStyle linkStyle,
-      TextStyle tagStyle,
-      StringCallback onOpen,
-      StringCallback onTagClick}) {
+  TextSpan _buildTextSpan({String text,
+    TextStyle style,
+    TextStyle linkStyle,
+    TextStyle tagStyle,
+    StringCallback onOpen,
+    StringCallback onTagClick,
+    StringCallback onMentionClick}) {
     void _onOpen(String url) {
       if (onOpen != null) {
         onOpen(url);
@@ -127,29 +146,41 @@ class SmartText extends StatelessWidget {
       }
     }
 
+    void _onMentionClick(String mention) {
+      if (onMentionClick != null) {
+        onMentionClick(url);
+      }
+    }
+
     final elements = _smartify(text);
 
     return TextSpan(
         children: elements.map<TextSpan>((element) {
-      if (element is TextElement) {
-        return TextSpan(
-          text: element.text,
-          style: style,
-        );
-      } else if (element is LinkElement) {
-        return LinkTextSpan(
-          text: element.url,
-          style: linkStyle,
-          onPressed: () => _onOpen(element.url),
-        );
-      } else if (element is HashTagElement) {
-        return LinkTextSpan(
-          text: element.tag,
-          style: tagStyle,
-          onPressed: () => _onTagClick(element.tag),
-        );
-      }
-    }).toList());
+          if (element is TextElement) {
+            return TextSpan(
+              text: element.text,
+              style: style,
+            );
+          } else if (element is LinkElement) {
+            return LinkTextSpan(
+              text: element.url,
+              style: linkStyle,
+              onPressed: () => _onOpen(element.url),
+            );
+          } else if (element is HashTagElement) {
+            return LinkTextSpan(
+              text: element.tag,
+              style: tagStyle,
+              onPressed: () => _onTagClick(element.tag),
+            );
+          } else if (element is MentionElement) {
+            return LinkTextSpan(
+              text: element.name,
+              style: tagStyle,
+              onPressed: () => _onMentionClick(element.name),
+            );
+          }
+        }).toList());
   }
 
   @override
@@ -158,23 +189,29 @@ class SmartText extends StatelessWidget {
       softWrap: true,
       text: _buildTextSpan(
         text: text,
-        style: Theme.of(context).textTheme.body1.merge(style),
-        linkStyle: Theme.of(context)
+        style: Theme
+            .of(context)
+            .textTheme
+            .body1
+            .merge(style),
+        linkStyle: Theme
+            .of(context)
             .textTheme
             .body1
             .merge(style)
             .copyWith(
-              color: Colors.blueAccent,
-              decoration: TextDecoration.underline,
-            )
+          color: Colors.blueAccent,
+          decoration: TextDecoration.underline,
+        )
             .merge(linkStyle),
-        tagStyle: Theme.of(context)
+        tagStyle: Theme
+            .of(context)
             .textTheme
             .body1
             .merge(style)
             .copyWith(
-              color: Colors.blueAccent,
-            )
+          color: Colors.blueAccent,
+        )
             .merge(linkStyle),
         onOpen: onOpen,
         onTagClick: onTagClick,
@@ -186,8 +223,9 @@ class SmartText extends StatelessWidget {
 class LinkTextSpan extends TextSpan {
   LinkTextSpan({TextStyle style, VoidCallback onPressed, String text})
       : super(
-          style: style,
-          text: text,
-          recognizer: new TapGestureRecognizer()..onTap = onPressed,
-        );
+    style: style,
+    text: text,
+    recognizer: new TapGestureRecognizer()
+      ..onTap = onPressed,
+  );
 }
